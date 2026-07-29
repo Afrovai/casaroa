@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa ROA — Gestión</title>
+<style>
+/*
+  styles.css
+  ---------------------------------------------------------------------
+  Paleta pensada para una PYME argentina: verde "cosecha" para valores
+  positivos/ingresos, terracota para egresos/alertas, y un fondo neutro
+  que no cansa la vista en jornadas largas de carga de datos.
+  ---------------------------------------------------------------------
+*/
+:root {
+  --verde: #2f6f4f;
+  --verde-suave: rgba(47, 111, 79, .12);
+  --terracota: #a3572f;
+  --terracota-suave: rgba(163, 87, 47, .12);
+  --fondo: #f6f5f2;
+  --panel: #ffffff;
+  --borde: #e3e0d8;
+  --texto: #23241f;
+  --texto-suave: #6c6a62;
+  --radio: 8px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+}
+
+.oculto { display: none !important; }
+
+/* --- Login --- */
+.pantalla-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-card {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 40px;
+  text-align: center;
+  max-width: 340px;
+}
+.login-card h1 { margin: 0 0 6px; font-size: 24px; }
+.login-card p { color: var(--texto-suave); margin-bottom: 22px; }
+.login-error { color: var(--terracota); font-size: 13px; min-height: 18px; margin-top: 14px; }
+
+/* --- Layout general --- */
+.app-shell { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 220px;
+  background: var(--panel);
+  border-right: 1px solid var(--borde);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+}
+.marca { font-weight: 700; font-size: 18px; margin-bottom: 24px; }
+.nav-links { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.nav-link {
+  padding: 9px 10px;
+  border-radius: var(--radio);
+  color: var(--texto);
+  text-decoration: none;
+  font-size: 14px;
+}
+.nav-link:hover { background: var(--fondo); }
+.nav-link.activo { background: var(--verde-suave); color: var(--verde); font-weight: 600; }
+
+.usuario-actual { border-top: 1px solid var(--borde); padding-top: 14px; font-size: 13px; }
+#usuario-nombre { font-weight: 600; }
+.rol-badge {
+  display: inline-block;
+  margin: 4px 0 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--verde-suave);
+  color: var(--verde);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.btn-texto {
+  background: none; border: none; color: var(--texto-suave);
+  cursor: pointer; font-size: 13px; padding: 0;
+}
+.btn-texto:hover { color: var(--terracota); }
+
+.contenido { flex: 1; padding: 30px 40px; max-width: 1100px; }
+h1 { font-size: 22px; margin: 0 0 20px; }
+h2 { font-size: 16px; margin: 24px 0 12px; }
+
+/* --- Formularios --- */
+.form-rapido {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  padding: 16px;
+}
+.form-rapido input, .form-rapido select {
+  padding: 9px 10px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  font-size: 14px;
+  min-width: 140px;
+}
+.form-rapido button {
+  background: var(--verde);
+  color: #fff; border: none;
+  padding: 10px 18px;
+  border-radius: var(--radio);
+  cursor: pointer;
+  font-weight: 600;
+}
+.form-rapido button:hover { filter: brightness(1.08); }
+.total-preview { font-weight: 600; color: var(--verde); min-width: 120px; }
+.status { min-height: 18px; color: var(--terracota); font-size: 13px; margin-top: 8px; }
+
+/* --- Tablas --- */
+.tabla { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; margin-top: 8px;}
+.tabla th, .tabla td { padding: 10px 12px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--borde); }
+.tabla th { color: var(--texto-suave); text-transform: uppercase; font-size: 11px; letter-spacing: .03em; }
+.tabla tr:last-child td { border-bottom: none; }
+.stock-bajo { color: var(--terracota); font-weight: 600; }
+.stock-agotado { color: #b3392b; font-weight: 700; }
+
+/* --- Tarjetas de resumen (dashboard/contabilidad) --- */
+.tarjetas-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.tarjeta { background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); padding: 16px; }
+.tarjeta-titulo { font-size: 12px; color: var(--texto-suave); text-transform: uppercase; }
+.tarjeta-monto { font-size: 22px; font-weight: 700; margin: 4px 0; }
+.tarjeta-detalle { font-size: 12px; color: var(--texto-suave); }
+.tarjeta-margen { font-size: 13px; font-weight: 600; margin-top: 6px; }
+.positivo { color: var(--verde); }
+.negativo { color: var(--terracota); }
+
+.fila-graficos { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+.dos-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.panel { background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); padding: 18px; }
+
+.lista-stock-bajo, .lista-simple { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+.lista-stock-bajo li, .lista-simple li { padding: 6px 0; border-bottom: 1px solid var(--borde); }
+.lista-stock-bajo li:last-child, .lista-simple li:last-child { border-bottom: none; }
+
+.mensaje-vacio { color: var(--texto-suave); font-size: 13px; padding: 16px 0; }
+.mensaje-error { color: var(--terracota); }
+.cargando { color: var(--texto-suave); }
+.hint { color: var(--texto-suave); font-size: 12px; margin-top: 8px; }
+
+.btn-link { background: none; border: none; color: var(--verde); cursor: pointer; font-size: 12px; padding: 0; margin-right: 8px; }
+.btn-link-danger { color: var(--terracota); }
+.input-inline { width: 70px; padding: 4px 6px; border: 1px solid var(--borde); border-radius: 4px; }
+
+.tag-admin { font-size: 11px; color: var(--texto-suave); }
+.tag-pendiente { color: #a3572f; }
+.tag-aprobada { color: var(--verde); }
+.tag-rechazada { color: #b3392b; }
+.tag-ingreso { color: var(--verde); font-weight: 600; }
+.tag-egreso { color: var(--terracota); font-weight: 600; }
+
+/* --- Toast --- */
+.toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: var(--texto); color: #fff;
+  padding: 12px 18px; border-radius: var(--radio);
+  font-size: 13px; z-index: 100;
+}
+.toast-error { background: #b3392b; }
+.toast-ok { background: var(--verde); }
+
+@media (max-width: 800px) {
+  .app-shell { flex-direction: column; }
+  .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .nav-links { flex-direction: row; flex-wrap: wrap; }
+  .contenido { padding: 20px; }
+  .fila-graficos, .dos-columnas { grid-template-columns: 1fr; }
+}
+
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- Pantalla de login: se muestra hasta que Google Identity confirma la sesión -->
+  <div id="pantalla-login" class="pantalla-login">
+    <div class="login-card">
+      <h1>Casa ROA</h1>
+      <p>Gestión de ventas, compras e inventario.</p>
+      <div id="google-signin-btn"></div>
+      <p id="login-error" class="login-error"></p>
+    </div>
+  </div>
+
+  <!-- App real, oculta hasta login exitoso -->
+  <div id="app-shell" class="app-shell oculto">
+    <nav class="sidebar">
+      <div class="marca">Casa ROA</div>
+      <div id="nav-links" class="nav-links"></div>
+      <div class="usuario-actual">
+        <div id="usuario-nombre"></div>
+        <div id="usuario-rol" class="rol-badge"></div>
+        <button id="btn-logout" class="btn-texto">Cerrar sesión</button>
+      </div>
+    </nav>
+    <main id="contenido" class="contenido">
+      <!-- Cada vista se inyecta acá -->
+    </main>
+  </div>
+
+  <div id="toast" class="toast oculto"></div>
+
+  <!-- Configuración: EDITÁ config.js con tu Client ID y URL de Apps Script -->
+  <script>
+    // ==== config.js ====
+/**
+ * config.js
+ * -----------------------------------------------------------------------
+ * ÚNICO archivo que necesitás editar para conectar el frontend con tu
+ * propio proyecto de Google Cloud y tu propia Web App de Apps Script.
+ * Los pasos para obtener estos dos valores están en el README.md.
+ * -----------------------------------------------------------------------
+ */
+window.CASA_ROA_CONFIG = {
+  // Client ID de OAuth (Google Cloud Console → Credenciales → OAuth Client ID → tipo "Web").
+  GOOGLE_CLIENT_ID: 'REEMPLAZAR_CON_TU_CLIENT_ID.apps.googleusercontent.com',
+
+  // URL de la Web App publicada de Apps Script (termina en /exec).
+  APPS_SCRIPT_URL: 'REEMPLAZAR_CON_TU_URL_DE_WEB_APP'
+};
+
+
+    // ==== utils.js ====
+/**
+ * utils.js
+ * -----------------------------------------------------------------------
+ * Helpers chicos usados por varias vistas. Cargar ANTES que las vistas
+ * en index.html.
+ * -----------------------------------------------------------------------
+ */
+function formatearARS(valor) {
+  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(valor || 0);
+}
+
+function formatearFecha(valor) {
+  if (!valor) return '';
+  var d = new Date(valor);
+  if (isNaN(d.getTime())) return valor;
+  return d.toLocaleDateString('es-AR');
+}
+
+function escapeHtml(str) {
+  return (str === null || str === undefined ? '' : str.toString())
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function mostrarToast(mensaje, esError) {
+  var toast = document.getElementById('toast');
+  toast.textContent = mensaje;
+  toast.className = 'toast' + (esError ? ' toast-error' : ' toast-ok');
+  setTimeout(function () { toast.classList.add('oculto'); }, 3500);
+}
+
+
+    // ==== state.js ====
+/**
+ * state.js
+ * -----------------------------------------------------------------------
+ * Estado en memoria de la sesión del navegador. No usa localStorage a
+ * propósito: al cerrar la pestaña, la sesión se termina y hay que
+ * volver a iniciar sesión con Google (más simple y más seguro para una
+ * app de 4 usuarios que se abre desde una compu compartida del local).
+ *
+ * "Caches" son solo para no repetir pedidos idénticos en la misma
+ * sesión (por ejemplo, la lista de inventario se usa en varias vistas).
+ * Cada vista es responsable de invalidar el cache cuando corresponde
+ * (por ejemplo, después de crear una venta se invalida "inventario").
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaState = (function () {
+  var usuario = null;      // { email, nombre, rol }
+  var idToken = null;
+  var caches = {};
+
+  return {
+    setSesion: function (u, token) { usuario = u; idToken = token; },
+    getUsuario: function () { return usuario; },
+    getIdToken: function () { return idToken; },
+    estaLogueado: function () { return !!usuario; },
+    esAdmin: function () { return !!usuario && usuario.rol === 'admin'; },
+    cerrarSesion: function () { usuario = null; idToken = null; caches = {}; },
+
+    getCache: function (clave) { return caches[clave]; },
+    setCache: function (clave, valor) { caches[clave] = valor; },
+    invalidarCache: function (clave) { delete caches[clave]; }
+  };
+})();
+
+
+    // ==== api.js ====
+/**
+ * api.js
+ * -----------------------------------------------------------------------
+ * Único punto por el que el frontend habla con Apps Script. Ninguna
+ * vista hace fetch() directo: todas pasan por CasaRoaApi.llamar().
+ *
+ * Nota técnica: se manda como "text/plain" (no "application/json") a
+ * propósito. Apps Script Web Apps no soportan preflight CORS con
+ * Content-Type application/json sin configuración extra, y text/plain
+ * evita el preflight. Apps Script igual parsea el body como JSON en
+ * doPost() (ver Code.gs), así que del lado de negocio no cambia nada.
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaApi = (function () {
+
+  async function llamar(action, payload) {
+    var url = window.CASA_ROA_CONFIG.APPS_SCRIPT_URL;
+    var body = {
+      action: action,
+      idToken: CasaRoaState.getIdToken(),
+      payload: payload || {}
+    };
+
+    var resp;
+    try {
+      resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body)
+      });
+    } catch (e) {
+      throw new Error('No se pudo conectar con el servidor. Revisá tu conexión a internet.');
+    }
+
+    var json;
+    try {
+      json = await resp.json();
+    } catch (e) {
+      throw new Error('El servidor respondió algo inesperado. Probá de nuevo en un momento.');
+    }
+
+    if (!json.ok) {
+      if (json.tipo === 'auth') {
+        // El token venció o no es válido: forzamos re-login.
+        CasaRoaAuth.forzarRelogin();
+      }
+      throw new Error(json.mensaje || 'Ocurrió un error.');
+    }
+
+    return json.data;
+  }
+
+  return { llamar: llamar };
+})();
+
+
+    // ==== auth.js ====
+/**
+ * auth.js
+ * -----------------------------------------------------------------------
+ * Muestra el botón "Iniciar sesión con Google" y, cuando Google devuelve
+ * el credential (JWT), lo guarda en el estado y llama a la acción "me"
+ * del backend para confirmar que el usuario está autorizado y obtener
+ * su nombre/rol reales (nunca confiamos en datos del JWT para el rol).
+ *
+ * OJO: esto NO reemplaza la verificación del backend. Es solo la puerta
+ * de entrada del frontend; la autorización real vuelve a chequearse en
+ * cada request dentro de Apps Script (ver Auth.gs).
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaAuth = (function () {
+
+  function init() {
+    google.accounts.id.initialize({
+      client_id: window.CASA_ROA_CONFIG.GOOGLE_CLIENT_ID,
+      callback: onCredencialRecibida
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('google-signin-btn'),
+      { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'pill' }
+    );
+  }
+
+  async function onCredencialRecibida(response) {
+    var errorEl = document.getElementById('login-error');
+    errorEl.textContent = '';
+    CasaRoaState.setSesion(null, response.credential);
+
+    try {
+      var usuario = await CasaRoaApi.llamar('me', {});
+      CasaRoaState.setSesion(usuario, response.credential);
+      mostrarApp(usuario);
+    } catch (e) {
+      CasaRoaState.cerrarSesion();
+      errorEl.textContent = e.message || 'No se pudo iniciar sesión.';
+    }
+  }
+
+  function mostrarApp(usuario) {
+    document.getElementById('pantalla-login').classList.add('oculto');
+    document.getElementById('app-shell').classList.remove('oculto');
+    document.getElementById('usuario-nombre').textContent = usuario.nombre || usuario.email;
+    document.getElementById('usuario-rol').textContent = usuario.rol;
+    CasaRoaRouter.init();
+  }
+
+  function forzarRelogin() {
+    CasaRoaState.cerrarSesion();
+    document.getElementById('app-shell').classList.add('oculto');
+    document.getElementById('pantalla-login').classList.remove('oculto');
+    document.getElementById('login-error').textContent = 'Tu sesión venció, iniciá sesión de nuevo.';
+  }
+
+  function logout() {
+    google.accounts.id.disableAutoSelect();
+    forzarRelogin();
+    document.getElementById('login-error').textContent = '';
+  }
+
+  document.getElementById('btn-logout').addEventListener('click', logout);
+  window.addEventListener('load', init);
+
+  return { forzarRelogin: forzarRelogin };
+})();
+
+
+    // ==== charts.js ====
+/**
+ * charts.js
+ * -----------------------------------------------------------------------
+ * Funciones cortas que arman gráficos de Chart.js con una config
+ * consistente, para no repetir opciones en cada vista.
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaCharts = (function () {
+
+  function lineaVentasCompras(canvas, labels, ventas, compras) {
+    return new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Ventas', data: ventas, borderColor: '#2f6f4f', backgroundColor: 'rgba(47,111,79,.15)', tension: .3, fill: true },
+          { label: 'Compras', data: compras, borderColor: '#a3572f', backgroundColor: 'rgba(163,87,47,.15)', tension: .3, fill: true }
+        ]
+      },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+
+  function barrasTopProductos(canvas, labels, unidades) {
+    return new Chart(canvas, {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: 'Unidades vendidas', data: unidades, backgroundColor: '#2f6f4f' }] },
+      options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+    });
+  }
+
+  return { lineaVentasCompras: lineaVentasCompras, barrasTopProductos: barrasTopProductos };
+})();
+
+
+    // ==== dashboard.js ====
+/**
+ * views/dashboard.js
+ * -----------------------------------------------------------------------
+ * Muestra resúmenes diario/semanal/mensual/anual, top de productos
+ * vendidos y alertas de stock bajo. Todos los cálculos vienen ya hechos
+ * desde Dashboard.gs — acá solo se pintan.
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaViewDashboard = async function (contenedor) {
+  try {
+    var resumen = await CasaRoaApi.llamar('dashboard.resumen', {});
+
+    contenedor.innerHTML = `
+      <h1>Dashboard</h1>
+      <div class="tarjetas-resumen">
+        ${tarjetaPeriodo('Hoy', resumen.periodos.diario)}
+        ${tarjetaPeriodo('Últimos 7 días', resumen.periodos.semanal)}
+        ${tarjetaPeriodo('Últimos 30 días', resumen.periodos.mensual)}
+        ${tarjetaPeriodo('Últimos 12 meses', resumen.periodos.anual)}
+      </div>
+
+      <div class="fila-graficos">
+        <div class="panel">
+          <h2>Productos más vendidos</h2>
+          <canvas id="chart-top-productos"></canvas>
+        </div>
+        <div class="panel">
+          <h2>Stock bajo</h2>
+          ${listaStockBajo(resumen.stock_bajo)}
+        </div>
+      </div>
+    `;
+
+    if (resumen.productos_mas_vendidos.length) {
+      CasaRoaCharts.barrasTopProductos(
+        document.getElementById('chart-top-productos'),
+        resumen.productos_mas_vendidos.map(function (p) { return p.producto; }),
+        resumen.productos_mas_vendidos.map(function (p) { return p.unidades_vendidas; })
+      );
+    }
+  } catch (e) {
+    contenedor.innerHTML = '<p class="mensaje-error">' + e.message + '</p>';
+  }
+};
+
+function tarjetaPeriodo(titulo, datos) {
+  return `
+    <div class="tarjeta">
+      <div class="tarjeta-titulo">${titulo}</div>
+      <div class="tarjeta-monto">${formatearARS(datos.total_ventas)}</div>
+      <div class="tarjeta-detalle">Ventas (${datos.cantidad_ventas}) · Compras ${formatearARS(datos.total_compras)} (${datos.cantidad_compras})</div>
+      <div class="tarjeta-margen ${datos.margen >= 0 ? 'positivo' : 'negativo'}">Margen: ${formatearARS(datos.margen)}</div>
+    </div>
+  `;
+}
+
+function listaStockBajo(items) {
+  if (!items.length) return '<p class="mensaje-vacio">Todo el stock está en niveles normales.</p>';
+  return '<ul class="lista-stock-bajo">' + items.map(function (i) {
+    return `<li><strong>${i.producto}</strong> — ${i.stock} unidades (mínimo: ${i.stock_minimo})</li>`;
+  }).join('') + '</ul>';
+}
+
+
+    // ==== ventas.js ====
+/**
+ * views/ventas.js
+ * -----------------------------------------------------------------------
+ * Formulario de alta pensado para cargar rápido: producto (con precio
+ * autocompletado desde inventario), cliente opcional, cantidad. El
+ * total se calcula solo. Debajo, el historial reciente.
+ *
+ * Editar una venta existente NO se hace acá: un click en "Pedir
+ * corrección" abre un mini-formulario que crea una Solicitud (ver
+ * solicitudes.js), salvo que el usuario sea admin, en cuyo caso edita
+ * directo.
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaViewVentas = async function (contenedor) {
+  try {
+    var [inventario, clientes, ventas] = await Promise.all([
+      obtenerInventarioCacheado(),
+      CasaRoaApi.llamar('clientes.listar', {}),
+      CasaRoaApi.llamar('ventas.listar', {})
+    ]);
+
+    contenedor.innerHTML = `
+      <h1>Ventas</h1>
+      <form id="form-venta" class="form-rapido">
+        <select id="venta-producto" required>
+          <option value="">Producto...</option>
+          ${inventario.map(function (i) { return `<option value="${i.id}" data-precio="${i.precio_venta}">${escapeHtml(i.producto)} (stock: ${i.stock})</option>`; }).join('')}
+        </select>
+        <select id="venta-cliente">
+          <option value="">Cliente (opcional)</option>
+          ${clientes.map(function (c) { return `<option value="${c.id}">${escapeHtml(c.nombre)}</option>`; }).join('')}
+        </select>
+        <input id="venta-cantidad" type="number" min="1" value="1" required>
+        <input id="venta-precio" type="number" min="0" step="0.01" required>
+        <div id="venta-total" class="total-preview">Total: $0</div>
+        <button type="submit">Registrar venta</button>
+      </form>
+      <div id="ventas-status" class="status"></div>
+
+      <h2>Historial reciente</h2>
+      <div id="ventas-tabla">${tablaVentas(ventas, inventario)}</div>
+    `;
+
+    var selectProducto = document.getElementById('venta-producto');
+    var inputCantidad = document.getElementById('venta-cantidad');
+    var inputPrecio = document.getElementById('venta-precio');
+    var totalPreview = document.getElementById('venta-total');
+
+    function actualizarTotal() {
+      var precio = parseFloat(inputPrecio.value) || 0;
+      var cantidad = parseFloat(inputCantidad.value) || 0;
+      totalPreview.textContent = 'Total: ' + formatearARS(precio * cantidad);
+    }
+
+    selectProducto.addEventListener('change', function () {
+      var opt = selectProducto.selectedOptions[0];
+      inputPrecio.value = opt ? (opt.dataset.precio || 0) : '';
+      actualizarTotal();
+    });
+    inputCantidad.addEventListener('input', actualizarTotal);
+    inputPrecio.addEventListener('input', actualizarTotal);
+
+    document.getElementById('form-venta').addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      var statusEl = document.getElementById('ventas-status');
+      statusEl.textContent = 'Guardando...';
+      try {
+        await CasaRoaApi.llamar('ventas.crear', {
+          producto_id: selectProducto.value,
+          cliente_id: document.getElementById('venta-cliente').value,
+          cantidad: parseFloat(inputCantidad.value),
+          precio_unitario: parseFloat(inputPrecio.value)
+        });
+        CasaRoaState.invalidarCache('inventario');
+        mostrarToast('Venta registrada.');
+        window.CasaRoaViewVentas(contenedor); // re-render con datos frescos
+      } catch (e) {
+        statusEl.textContent = e.message;
+      }
+    });
+  } catch (e) {
+    contenedor.innerHTML = '<p class="mensaje-error">' + e.message + '</p>';
+  }
+};
+
+function tablaVentas(ventas, inventario) {
+  if (!ventas.length) return '<p class="mensaje-vacio">Todavía no hay ventas cargadas.</p>';
+  var porId = {};
+  inventario.forEach(function (i) { porId[i.id] = i.producto; });
+
+  var filas = ventas.slice().reverse().slice(0, 50).map(function (v) {
+    var nombreProducto = porId[v.producto_id] || v.producto_id;
+    var puedeEditar = CasaRoaState.esAdmin();
+    return `
+      <tr>
+        <td>${formatearFecha(v.fecha)}</td>
+        <td>${escapeHtml(nombreProducto)}</td>
+        <td>${v.cantidad}</td>
+        <td>${formatearARS(v.precio_unitario)}</td>
+        <td>${formatearARS(v.total)}</td>
+        <td>${escapeHtml(v.usuario_email)}</td>
+        <td>${puedeEditar
+          ? '<span class="tag-admin">editable directo</span>'
+          : `<button class="btn-link" onclick="CasaRoaSolicitarCambio('venta','${v.id}')">Pedir corrección</button>`}</td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <table class="tabla">
+      <thead><tr><th>Fecha</th><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th><th>Usuario</th><th></th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
+  `;
+}
+
+async function obtenerInventarioCacheado() {
+  var cache = CasaRoaState.getCache('inventario');
+  if (cache) return cache;
+  var inventario = await CasaRoaApi.llamar('inventario.listar', {});
+  CasaRoaState.setCache('inventario', inventario);
+  return inventario;
+}
+
+
+    // ==== compras.js ====
+/**
+ * views/compras.js
+ * -----------------------------------------------------------------------
+ * Misma lógica que ventas.js pero para compras a proveedores: al cargar
+ * una compra, el stock sube y el costo promedio del producto se
+ * recalcula automáticamente (lo hace Compras.gs en el servidor).
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaViewCompras = async function (contenedor) {
+  try {
+    var [inventario, proveedores, compras] = await Promise.all([
+      obtenerInventarioCacheado(),
+      CasaRoaApi.llamar('proveedores.listar', {}),
+      CasaRoaApi.llamar('compras.listar', {})
+    ]);
+
+    contenedor.innerHTML = `
+      <h1>Compras</h1>
+      <form id="form-compra" class="form-rapido">
+        <select id="compra-producto" required>
+          <option value="">Producto...</option>
+          ${inventario.map(function (i) { return `<option value="${i.id}">${escapeHtml(i.producto)} (stock: ${i.stock})</option>`; }).join('')}
+        </select>
+        <select id="compra-proveedor">
+          <option value="">Proveedor (opcional)</option>
+          ${proveedores.map(function (p) { return `<option value="${p.id}">${escapeHtml(p.nombre)}</option>`; }).join('')}
+        </select>
+        <input id="compra-cantidad" type="number" min="1" value="1" required>
+        <input id="compra-costo" type="number" min="0" step="0.01" required placeholder="Costo unitario">
+        <div id="compra-total" class="total-preview">Total: $0</div>
+        <button type="submit">Registrar compra</button>
+      </form>
+      <div id="compras-status" class="status"></div>
+
+      <h2>Historial reciente</h2>
+      <div id="compras-tabla">${tablaCompras(compras, inventario)}</div>
+    `;
+
+    var inputCantidad = document.getElementById('compra-cantidad');
+    var inputCosto = document.getElementById('compra-costo');
+    var totalPreview = document.getElementById('compra-total');
+
+    function actualizarTotal() {
+      var costo = parseFloat(inputCosto.value) || 0;
+      var cantidad = parseFloat(inputCantidad.value) || 0;
+      totalPreview.textContent = 'Total: ' + formatearARS(costo * cantidad);
+    }
+    inputCantidad.addEventListener('input', actualizarTotal);
+    inputCosto.addEventListener('input', actualizarTotal);
+
+    document.getElementById('form-compra').addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      var statusEl = document.getElementById('compras-status');
+      statusEl.textContent = 'Guardando...';
+      try {
+        await CasaRoaApi.llamar('compras.crear', {
+          producto_id: document.getElementById('compra-producto').value,
+          proveedor_id: document.getElementById('compra-proveedor').value,
+          cantidad: parseFloat(inputCantidad.value),
+          costo_unitario: parseFloat(inputCosto.value)
+        });
+        CasaRoaState.invalidarCache('inventario');
+        mostrarToast('Compra registrada.');
+        window.CasaRoaViewCompras(contenedor);
+      } catch (e) {
+        statusEl.textContent = e.message;
+      }
+    });
+  } catch (e) {
+    contenedor.innerHTML = '<p class="mensaje-error">' + e.message + '</p>';
+  }
+};
+
+function tablaCompras(compras, inventario) {
+  if (!compras.length) return '<p class="mensaje-vacio">Todavía no hay compras cargadas.</p>';
+  var porId = {};
+  inventario.forEach(function (i) { porId[i.id] = i.producto; });
+
+  var filas = compras.slice().reverse().slice(0, 50).map(function (c) {
+    var nombreProducto = porId[c.producto_id] || c.producto_id;
+    var puedeEditar = CasaRoaState.esAdmin();
+    return `
+      <tr>
+        <td>${formatearFecha(c.fecha)}</td>
+        <td>${escapeHtml(nombreProducto)}</td>
+        <td>${c.cantidad}</td>
+        <td>${formatearARS(c.costo_unitario)}</td>
+        <td>${formatearARS(c.total)}</td>
+        <td>${escapeHtml(c.usuario_email)}</td>
+        <td>${puedeEditar
+          ? '<span class="tag-admin">editable directo</span>'
+          : `<button class="btn-link" onclick="CasaRoaSolicitarCambio('compra','${c.id}')">Pedir corrección</button>`}</td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <table class="tabla">
+      <thead><tr><th>Fecha</th><th>Producto</th><th>Cant.</th><th>Costo</th><th>Total</th><th>Usuario</th><th></th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
+  `;
+}
+
+
+    // ==== inventario.js ====
+/**
+ * views/inventario.js
+ * -----------------------------------------------------------------------
+ * Todos ven el inventario completo. Solo un admin ve los inputs
+ * editables para corregir stock, precio o categoría directo (sin pasar
+ * por Solicitudes, porque ya es admin).
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaViewInventario = async function (contenedor) {
+  try {
+    CasaRoaState.invalidarCache('inventario');
+    var inventario = await obtenerInventarioCacheado();
+    var esAdmin = CasaRoaState.esAdmin();
+
+    contenedor.innerHTML = `
+      <h1>Inventario</h1>
+      <input id="filtro-inventario" placeholder="Buscar producto o categoría...">
+      <div id="tabla-inventario">${tablaInventario(inventario, esAdmin)}</div>
+    `;
+
+    document.getElementById('filtro-inventario').addEventListener('input', function (ev) {
+      var q = ev.target.value.toLowerCase();
+      var filtrado = inventario.filter(function (i) {
+        return (i.producto || '').toLowerCase().includes(q) || (i.categoria || '').toLowerCase().includes(q);
+      });
+      document.getElementById('tabla-inventario').innerHTML = tablaInventario(filtrado, esAdmin);
+      if (esAdmin) activarEdicion(inventario);
+    });
+
+    if (esAdmin) activarEdicion(inventario);
+  } catch (e) {
+    contenedor.innerHTML = '<p class="mensaje-error">' + e.message + '</p>';
+  }
+};
+
+function tablaInventario(items, esAdmin) {
+  if (!items.length) return '<p class="mensaje-vacio">No hay productos cargados.</p>';
+  var filas = items.map(function (i) {
+    var claseStock = i.stock <= 0 ? 'stock-agotado' : (i.stock <= i.stock_minimo ? 'stock-bajo' : '');
+    return `
+      <tr>
+        <td>${escapeHtml(i.producto)}</td>
+        <td>${escapeHtml(i.categoria)}</td>
+        <td>${formatearARS(i.precio_venta)}</td>
+        <td class="${claseStock}">
+          ${esAdmin
+            ? `<input class="input-inline" data-id="${i.id}" data-campo="stock" type="number" value="${i.stock}">`
+            : i.stock}
+        </td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <table class="tabla">
+      <thead><tr><th>Producto</th><th>Categoría</th><th>Precio</th><th>Stock</th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
+    ${esAdmin ? '<p class="hint">Como admin podés editar el stock directo acá; el cambio se guarda al salir del campo.</p>' : ''}
+  `;
+}
+
+function activarEdicion(inventario) {
+  document.querySelectorAll('.input-inline').forEach(function (input) {
+    input.addEventListener('change', async function () {
+      try {
+        await CasaRoaApi.llamar('inventario.actualizar', {
+          id: input.dataset.id,
+          stock: parseFloat(input.value)
+        });
+        CasaRoaState.invalidarCache('inventario');
+        mostrarToast('Stock actualizado.');
+      } catch (e) {
+        mostrarToast(e.message, true);
+      }
+    });
+  });
+}
+
+
+    // ==== proveedores-clientes.js ====
+/**
+ * views/proveedores-clientes.js
+ * -----------------------------------------------------------------------
+ * Dos formularios simples en una sola vista. El alta está disponible
+ * para cualquier usuario autenticado.
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaViewProveedoresClientes = async function (contenedor) {
+  try {
+    var [proveedores, clientes] = await Promise.all([
+      CasaRoaApi.llamar('proveedores.listar', {}),
+      CasaRoaApi.llamar('clientes.listar', {})
+    ]);
+
+    contenedor.innerHTML = `
+      <h1>Proveedores y clientes</h1>
+      <div class="dos-columnas">
+        <section class="panel">
+          <h2>Proveedores</h2>
+          <form id="form-proveedor" class="form-rapido">
+            <input id="prov-nombre" placeholder="Nombre" required>
+            <input id="prov-contacto" placeholder="Contacto (email/persona)">
+            <input id="prov-telefono" placeholder="Teléfono">
+            <button type="submit">Agregar proveedor</button>
+          </form>
+          <ul class="lista-simple">${proveedores.map(function (p) { return `<li>${escapeHtml(p.nombre)} ${p.telefono ? '— ' + escapeHtml(p.telefono) : ''}</li>`; }).join('')}</ul>
+        </section>
+        <section class="panel">
+          <h2>Clientes</h2>
+          <form id="form-cliente" class="form-rapido">
+            <input id="cli-nombre" placeholder="Nombre" required>
+            <input id="cli-contacto" placeholder="Contacto (email/persona)">
+            <input id="cli-telefono" placeholder="Teléfono">
+            <button type="submit">Agregar cliente</button>
+          </form>
+          <ul class="lista-simple">${clientes.map(function (c) { return `<li>${escapeHtml(c.nombre)} ${c.telefono ? '— ' + escapeHtml(c.telefono) : ''}</li>`; }).join('')}</ul>
+        </section>
+      </div>
+    `;
+
+    document.getElementById('form-proveedor').addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      await CasaRoaApi.llamar('proveedores.crear', {
+        nombre: document.getElementById('prov-nombre').value,
+        contacto: document.getElementById('prov-contacto').value,
+        telefono: document.getElementById('prov-telefono').value
+      });
+      mostrarToast('Proveedor agregado.');
+      window.CasaRoaViewProveedoresClientes(contenedor);
+    });
+
+    document.getElementById('form-cliente').addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      await CasaRoaApi.llamar('clientes.crear', {
+        nombre: document.getElementById('cli-nombre').value,
+        contacto: document.getElementById('cli-contacto').value,
+        telefono: document.getElementById('cli-telefono').value
+      });
+      mostrarToast('Cliente agregado.');
+      window.CasaRoaViewProveedoresClientes(contenedor);
+    });
+  } catch (e) {
+    contenedor.innerHTML = '<p class="mensaje-error">' + e.message + '</p>';
+  }
+};
+
+
+    // ==== solicitudes.js ====
+/**
+ * views/solicitudes.js
+ * -----------------------------------------------------------------------
+ * - Un Usuario ve acá el estado de lo que pidió corregir.
+ * - Un Admin ve TODAS las solicitudes pendientes y las aprueba/rechaza.
+ *
+ * `CasaRoaSolicitarCambio` se llama desde los botones "Pedir corrección"
+ * en ventas.js / compras.js — abre un mini-formulario con prompt() para
+ * mantenerlo simple (esto es intencional: es una acción poco frecuente,
+ * no vale la pena un modal completo).
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaViewSolicitudes = async function (contenedor) {
+  try {
+    var solicitudes = await CasaRoaApi.llamar('solicitudes.listar', {});
+    var esAdmin = CasaRoaState.esAdmin();
+
+    contenedor.innerHTML = `
+      <h1>Solicitudes de cambio</h1>
+      <p class="hint">${esAdmin ? 'Revisá y aprobá o rechazá los pedidos de corrección del equipo.' : 'Acá ves el estado de tus pedidos de corrección.'}</p>
+      <div id="tabla-solicitudes">${tablaSolicitudes(solicitudes, esAdmin)}</div>
+    `;
+
+    if (esAdmin) {
+      document.querySelectorAll('[data-resolver]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          try {
+            await CasaRoaApi.llamar('solicitudes.resolver', {
+              id: btn.dataset.id,
+              decision: btn.dataset.resolver
+            });
+            mostrarToast('Solicitud ' + (btn.dataset.resolver === 'aprobar' ? 'aprobada' : 'rechazada') + '.');
+            CasaRoaState.invalidarCache('inventario');
+            window.CasaRoaViewSolicitudes(contenedor);
+          } catch (e) {
+            mostrarToast(e.message, true);
+          }
+        });
+      });
+    }
+  } catch (e) {
+    contenedor.innerHTML = '<p class="mensaje-error">' + e.message + '</p>';
+  }
+};
+
+function tablaSolicitudes(solicitudes, esAdmin) {
+  if (!solicitudes.length) return '<p class="mensaje-vacio">No hay solicitudes.</p>';
+  var filas = solicitudes.slice().reverse().map(function (s) {
+    return `
+      <tr>
+        <td>${formatearFecha(s.fecha_solicitud)}</td>
+        <td>${escapeHtml(s.tipo)}</td>
+        <td>${escapeHtml(s.campo)}</td>
+        <td>${escapeHtml(s.valor_actual)} → <strong>${escapeHtml(s.valor_propuesto)}</strong></td>
+        <td>${escapeHtml(s.solicitado_por)}</td>
+        <td><span class="tag-estado tag-${s.estado}">${s.estado}</span></td>
+        <td>${esAdmin && s.estado === 'pendiente'
+          ? `<button data-resolver="aprobar" data-id="${s.id}" class="btn-link">Aprobar</button>
+             <button data-resolver="rechazar" data-id="${s.id}" class="btn-link btn-link-danger">Rechazar</button>`
+          : ''}</td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <table class="tabla">
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>Campo</th><th>Cambio</th><th>Pedido por</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
+  `;
+}
+
+/**
+ * Llamado desde los botones "Pedir corrección" de ventas.js / compras.js.
+ * Usa prompt() a propósito: es un flujo excepcional (corregir un dato
+ * cargado mal), no vale la pena construir un modal para esto.
+ */
+window.CasaRoaSolicitarCambio = async function (tipo, registroId) {
+  var campo = prompt('¿Qué campo querés corregir? (ej: cantidad, precio_unitario, costo_unitario)');
+  if (!campo) return;
+  var valorPropuesto = prompt('¿Cuál es el valor correcto para "' + campo + '"?');
+  if (valorPropuesto === null || valorPropuesto === '') return;
+
+  try {
+    await CasaRoaApi.llamar('solicitudes.crear', {
+      tipo: tipo,
+      registro_id: registroId,
+      campo: campo,
+      valor_propuesto: valorPropuesto
+    });
+    mostrarToast('Solicitud enviada. Un admin la va a revisar.');
+  } catch (e) {
+    mostrarToast(e.message, true);
+  }
+};
+
+
+    // ==== contabilidad.js ====
+/**
+ * views/contabilidad.js
+ * -----------------------------------------------------------------------
+ * Vista de solo-admin (restringida también en router.js). Junta ventas
+ * (ingresos) y compras (egresos) en una sola línea de tiempo, con saldo
+ * acumulado, y un gráfico de evolución.
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaViewContabilidad = async function (contenedor) {
+  try {
+    var [ventas, compras] = await Promise.all([
+      CasaRoaApi.llamar('ventas.listar', {}),
+      CasaRoaApi.llamar('compras.listar', {})
+    ]);
+
+    var movimientos = construirMovimientos(ventas, compras);
+    var totalIngresos = movimientos.filter(function (m) { return m.tipo === 'ingreso'; }).reduce(function (a, m) { return a + m.monto; }, 0);
+    var totalEgresos = movimientos.filter(function (m) { return m.tipo === 'egreso'; }).reduce(function (a, m) { return a + m.monto; }, 0);
+
+    contenedor.innerHTML = `
+      <h1>Contabilidad</h1>
+      <div class="tarjetas-resumen">
+        <div class="tarjeta"><div class="tarjeta-titulo">Ingresos totales</div><div class="tarjeta-monto">${formatearARS(totalIngresos)}</div></div>
+        <div class="tarjeta"><div class="tarjeta-titulo">Egresos totales</div><div class="tarjeta-monto">${formatearARS(totalEgresos)}</div></div>
+        <div class="tarjeta"><div class="tarjeta-titulo">Saldo</div><div class="tarjeta-monto ${totalIngresos - totalEgresos >= 0 ? 'positivo' : 'negativo'}">${formatearARS(totalIngresos - totalEgresos)}</div></div>
+      </div>
+
+      <div class="panel">
+        <h2>Evolución (últimos 30 movimientos)</h2>
+        <canvas id="chart-evolucion"></canvas>
+      </div>
+
+      <h2>Movimientos</h2>
+      <table class="tabla">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th>Monto</th><th>Saldo acumulado</th></tr></thead>
+        <tbody>${filasMovimientos(movimientos)}</tbody>
+      </table>
+    `;
+
+    var ultimos = movimientos.slice(-30);
+    CasaRoaCharts.lineaVentasCompras(
+      document.getElementById('chart-evolucion'),
+      ultimos.map(function (m) { return formatearFecha(m.fecha); }),
+      ultimos.map(function (m) { return m.tipo === 'ingreso' ? m.monto : 0; }),
+      ultimos.map(function (m) { return m.tipo === 'egreso' ? m.monto : 0; })
+    );
+  } catch (e) {
+    contenedor.innerHTML = '<p class="mensaje-error">' + e.message + '</p>';
+  }
+};
+
+function construirMovimientos(ventas, compras) {
+  var movimientos = [];
+  ventas.forEach(function (v) { movimientos.push({ fecha: v.fecha, tipo: 'ingreso', detalle: 'Venta ' + v.id, monto: v.total }); });
+  compras.forEach(function (c) { movimientos.push({ fecha: c.fecha, tipo: 'egreso', detalle: 'Compra ' + c.id, monto: c.total }); });
+  movimientos.sort(function (a, b) { return new Date(a.fecha) - new Date(b.fecha); });
+
+  var saldo = 0;
+  movimientos.forEach(function (m) {
+    saldo += m.tipo === 'ingreso' ? m.monto : -m.monto;
+    m.saldo = saldo;
+  });
+  return movimientos;
+}
+
+function filasMovimientos(movimientos) {
+  if (!movimientos.length) return '<tr><td colspan="5" class="mensaje-vacio">Sin movimientos todavía.</td></tr>';
+  return movimientos.slice().reverse().slice(0, 100).map(function (m) {
+    return `
+      <tr>
+        <td>${formatearFecha(m.fecha)}</td>
+        <td><span class="tag-${m.tipo}">${m.tipo}</span></td>
+        <td>${escapeHtml(m.detalle)}</td>
+        <td>${m.tipo === 'ingreso' ? '+' : '-'}${formatearARS(m.monto)}</td>
+        <td>${formatearARS(m.saldo)}</td>
+      </tr>`;
+  }).join('');
+}
+
+
+    // ==== router.js ====
+/**
+ * router.js
+ * -----------------------------------------------------------------------
+ * Router mínimo basado en el hash de la URL (#ventas, #compras, etc.).
+ * No usamos ningún framework: son 4 usuarios y ~7 vistas, un router de
+ * 40 líneas es más fácil de mantener para alguien sin experiencia en
+ * frameworks de frontend que agregar una dependencia nueva.
+ *
+ * "Solo admin" en una vista es una restricción VISUAL únicamente
+ * (esconde el link, redirige si entra a la URL a mano). El permiso
+ * real, el que importa, se vuelve a validar siempre en Apps Script.
+ * -----------------------------------------------------------------------
+ */
+window.CasaRoaRouter = (function () {
+
+  var VISTAS = [
+    { hash: 'dashboard', label: 'Dashboard', soloAdmin: false, render: window.CasaRoaViewDashboard },
+    { hash: 'ventas', label: 'Ventas', soloAdmin: false, render: window.CasaRoaViewVentas },
+    { hash: 'compras', label: 'Compras', soloAdmin: false, render: window.CasaRoaViewCompras },
+    { hash: 'inventario', label: 'Inventario', soloAdmin: false, render: window.CasaRoaViewInventario },
+    { hash: 'proveedores-clientes', label: 'Proveedores y clientes', soloAdmin: false, render: window.CasaRoaViewProveedoresClientes },
+    { hash: 'solicitudes', label: 'Solicitudes', soloAdmin: false, render: window.CasaRoaViewSolicitudes },
+    { hash: 'contabilidad', label: 'Contabilidad', soloAdmin: true, render: window.CasaRoaViewContabilidad }
+  ];
+
+  function init() {
+    pintarNav();
+    window.addEventListener('hashchange', renderVistaActual);
+    if (!location.hash) location.hash = '#dashboard';
+    renderVistaActual();
+  }
+
+  function pintarNav() {
+    var nav = document.getElementById('nav-links');
+    nav.innerHTML = '';
+    VISTAS.forEach(function (v) {
+      if (v.soloAdmin && !CasaRoaState.esAdmin()) return;
+      var a = document.createElement('a');
+      a.href = '#' + v.hash;
+      a.textContent = v.label;
+      a.className = 'nav-link';
+      nav.appendChild(a);
+    });
+  }
+
+  function renderVistaActual() {
+    var hash = (location.hash || '#dashboard').replace('#', '');
+    var vista = VISTAS.filter(function (v) { return v.hash === hash; })[0];
+    var contenedor = document.getElementById('contenido');
+
+    if (!vista) { location.hash = '#dashboard'; return; }
+    if (vista.soloAdmin && !CasaRoaState.esAdmin()) {
+      contenedor.innerHTML = '<p class="mensaje-vacio">No tenés permiso para ver esta sección.</p>';
+      return;
+    }
+
+    document.querySelectorAll('.nav-link').forEach(function (a) {
+      a.classList.toggle('activo', a.getAttribute('href') === '#' + hash);
+    });
+
+    contenedor.innerHTML = '<p class="cargando">Cargando...</p>';
+    vista.render(contenedor);
+  }
+
+  return { init: init };
+})();
+
+  </script>
+</body>
+</html>
